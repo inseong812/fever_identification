@@ -7,13 +7,17 @@ import re
 
 # get groundtruth info
 coco = COCO('../dataset/coco.json')
-coco
 
 
-def min_max(bbox):
-    x, w = [x / 640 for x in bbox[::2]]
-    y, h = [x / 480 for x in bbox[1::2]]
+def min_max(bbox, img_w, img_h):
+    x, w = [x / img_w for x in bbox[::2]]
+    y, h = [x / img_h for x in bbox[1::2]]
     return [x, y, w, h]
+
+
+def mask_slice(bbox, mask):
+    x1, y1, w, h = bbox
+    return mask[y1:y1+h, x1:x1+w]
 
 
 img_path_to_id = {re.sub('.jpg', '', os.path.basename(
@@ -35,13 +39,24 @@ for img_id in coco.getImgIds():
     sample = fo.Sample(filepath='../dataset/' +
                        coco.loadImgs(img_id)[0]['file_name'])
     detections = []
+    img_info = coco.loadImgs(ids=img_id)[0]
     # annotation 별 iteration
     for ann_id in coco.getAnnIds(imgIds=img_id):
         obj = coco.loadAnns(ann_id)[0]
         label = id_to_cat[obj['category_id']]
-        bbox = min_max(obj['bbox'])
+        bbox = min_max(obj['bbox'], img_info['width'], img_info['height'])
 
-    sample['segmentation'] = fo.Segmentation(mask=coco.annToMask(obj))
+        # fiftyone detections sample에 annotation 삽입
+        detections.append(
+            fo.Detection(label=label,
+                         bounding_box=bbox,
+                         mask=mask_slice(bbox=obj['bbox'],
+                                         mask=coco.annToMask(obj)))
+        )
+
+    if detections:
+        sample['ground_truth'] = fo.Detections(detections=detections)
+
     samples.append(sample)
 
 # dataset title 넣기
