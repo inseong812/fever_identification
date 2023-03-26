@@ -37,7 +37,8 @@ id_cat = {v['id']: v['name'] for v in coco.loadCats(coco.getCatIds())}
 samples = []
 for img_id in coco.getImgIds():
     # fiftyone sample에 이미지 파일 경로를 추가
-    sample = fo.Sample(filepath=coco.loadImgs(img_id)[0]['file_name'])
+    img_info = coco.loadImgs(img_id)[0]
+    sample = fo.Sample(filepath=img_info['file_name'], tags=[img_info['tag']])
     detections = []
     img_info = coco.loadImgs(ids=img_id)[0]
     # 이미지에 대한 annotation 정보를 가져와서 detections에 추가
