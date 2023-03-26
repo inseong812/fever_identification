@@ -10,50 +10,51 @@ coco = COCO('../dataset/coco.json')
 
 
 def min_max(bbox, img_w, img_h):
+    '''
+    normalize [0,1]
+    '''
     x, w = [x / img_w for x in bbox[::2]]
     y, h = [x / img_h for x in bbox[1::2]]
     return [x, y, w, h]
 
 
 def mask_slice(bbox, mask):
+    '''
+    fiftyone은 bbox내 상대좌표로 masking을 함
+    bbox 좌표 내로 자르기
+    '''
     x1, y1, w, h = bbox
     return mask[y1:y1+h, x1:x1+w]
 
 
-img_path_to_id = {re.sub('.jpg', '', os.path.basename(
-    x['file_name'])): x['id'] for x in coco.loadImgs(coco.getImgIds())}
+# coco dataset에 있는 image_path 불러오기
+img_path_list = [anno['file_name'] for anno in coco.loadImgs(coco.getImgIds())]
 
-img_path_list = ['../dataset/' + anno['file_name']
-                 for anno in coco.loadImgs(coco.getImgIds())]
+# coco 데이터셋에서 카테고리 id와 이름을 매칭시키는 딕셔너리 생성
+id_cat = {v['id']: v['name'] for v in coco.loadCats(coco.getCatIds())}
 
-# Create a dataset from a glob pattern of images
-dataset = fo.Dataset.from_images(img_path_list)
-
-# id : category 매칭
-id_to_cat = {v['id']: v['name'] for v in coco.loadCats(coco.getCatIds())}
-
-# img 별 iteration
+# 이미지 별로 fiftyone sample을 생성하여 detections 정보를 추가
 samples = []
 for img_id in coco.getImgIds():
-    # fiftyone sample에 img 삽입
-    sample = fo.Sample(filepath='../dataset/' +
-                       coco.loadImgs(img_id)[0]['file_name'])
+    # fiftyone sample에 이미지 파일 경로를 추가
+    sample = fo.Sample(filepath=coco.loadImgs(img_id)[0]['file_name'])
     detections = []
     img_info = coco.loadImgs(ids=img_id)[0]
-    # annotation 별 iteration
+    # 이미지에 대한 annotation 정보를 가져와서 detections에 추가
     for ann_id in coco.getAnnIds(imgIds=img_id):
         obj = coco.loadAnns(ann_id)[0]
-        label = id_to_cat[obj['category_id']]
+        label = id_cat[obj['category_id']]  # annotation의 카테고리 id를 이용하여 라벨링
+        # annotation의 bbox 정보를 이용하여 fiftyone detection의 bounding box 생성
         bbox = min_max(obj['bbox'], img_info['width'], img_info['height'])
 
-        # fiftyone detections sample에 annotation 삽입
+        # fiftyone detection에 annotation 정보 추가
         detections.append(
             fo.Detection(label=label,
                          bounding_box=bbox,
-                         mask=mask_slice(bbox=obj['bbox'],
-                                         mask=coco.annToMask(obj)))
+                         mask=mask_slice(bbox=obj['bbox'], mask=coco.annToMask(obj)))
         )
 
+    # fiftyone sample에 detections 정보 추가
     if detections:
         sample['ground_truth'] = fo.Detections(detections=detections)
 

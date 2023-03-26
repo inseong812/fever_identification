@@ -93,7 +93,6 @@ for i, cat in enumerate(cats, start=1):
 df_obj['category_id'] = df_obj['category_id'].apply(lambda x: cats_id[x])
 df_obj['iscrowd'] = 0
 
-
 # cvt COCO
 df_coco = {}
 df_coco['images'] = df_img.to_dict('records')
