@@ -36,7 +36,7 @@ warnings.filterwarnings(action='ignore')
 
 # args = parser.parse_args()
 
-label_path_list = glob.glob('../dataset/label/*')
+label_path_list = glob.glob('./dataset/label/*')
 
 # make img dataframe
 df_img = pd.DataFrame(
@@ -60,7 +60,8 @@ for idx, label_path in enumerate(label_path_list, start=1):
          'file_name': img_path,
          'RESOLUTION': json_file['imageHeight'] * json_file['imageWidth'],
          'height': json_file['imageHeight'],
-         'width': json_file['imageWidth']}, ignore_index=True
+         'width': json_file['imageWidth'] , 
+         }, ignore_index=True
     )
 
     # get object
@@ -100,5 +101,5 @@ df_coco['annotations'] = df_obj.to_dict('records')
 df_coco['categories'] = [{'id': v, 'name': k,
                           'supercategory': 'label'} for k, v in cats_id.items()]
 
-with open('../dataset/coco.json',  "w") as json_file:
+with open('./dataset/coco.json',  "w") as json_file:
     json.dump(df_coco, json_file, indent=4, cls=NpEncoder)

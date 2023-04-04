@@ -4,11 +4,12 @@ import fiftyone as fo
 from pycocotools.coco import COCO
 import os
 import re
+import pandas as pd
 
 # get groundtruth info
-coco = COCO('../dataset/coco.json')
-
-
+coco = COCO('./dataset/coco.json')
+img_metas = pd.read_csv('./dataset/img_metas.csv')
+pattern = r'\d+'
 def min_max(bbox, img_w, img_h):
     '''
     normalize [0,1]
@@ -38,9 +39,11 @@ samples = []
 for img_id in coco.getImgIds():
     # fiftyone sample에 이미지 파일 경로를 추가
     img_info = coco.loadImgs(img_id)[0]
-    sample = fo.Sample(filepath=img_info['file_name'], tags=[img_info['tag']])
+    sample = fo.Sample(filepath=img_info['file_name'])
     detections = []
     img_info = coco.loadImgs(ids=img_id)[0]
+
+    number =  int(re.findall(pattern , img_info['file_name'])[0])
     # 이미지에 대한 annotation 정보를 가져와서 detections에 추가
     for ann_id in coco.getAnnIds(imgIds=img_id):
         obj = coco.loadAnns(ann_id)[0]
@@ -49,10 +52,19 @@ for img_id in coco.getImgIds():
         bbox = min_max(obj['bbox'], img_info['width'], img_info['height'])
 
         # fiftyone detection에 annotation 정보 추가
+        img_meta = img_metas[img_metas['No.'] == number]
         detections.append(
             fo.Detection(label=label,
                          bounding_box=bbox,
-                         mask=mask_slice(bbox=obj['bbox'], mask=coco.annToMask(obj)))
+                         mask=mask_slice(bbox=obj['bbox'], mask=coco.annToMask(obj)),
+                         age = img_meta['age'].values[0],
+                         sex = img_meta['sex'].values[0],
+                         room_temp = img_meta['room_temp'].values[0],
+                         ear_temp = img_meta['ear_temp'].values[0],
+                         eye_temp = img_meta['eye_temp'].values[0],
+                         skin_temp = img_meta['skin_temp'].values[0],
+                         glabella_temp = img_meta['glabella_temp'].values[0],
+                         )
         )
 
     # fiftyone sample에 detections 정보 추가
@@ -64,6 +76,14 @@ for img_id in coco.getImgIds():
 # dataset title 넣기
 dataset = fo.Dataset()
 dataset.add_samples(samples)
+dataset.add_sample_field( field_name='ground_truth.detections.age', ftype = fo.core.fields.IntField , description ='An age')
+dataset.add_sample_field( field_name='ground_truth.detections.sex', ftype = fo.core.fields.StringField , description ='An sex')
+dataset.add_sample_field( field_name='ground_truth.detections.room_temp', ftype = fo.core.fields.FloatField , description ='An room_temp')
+dataset.add_sample_field( field_name='ground_truth.detections.ear_temp', ftype = fo.core.fields.FloatField , description ='An ear_temp')
+dataset.add_sample_field( field_name='ground_truth.detections.eye_temp', ftype = fo.core.fields.FloatField , description ='An eye_temp')
+dataset.add_sample_field( field_name='ground_truth.detections.skin_temp', ftype = fo.core.fields.FloatField , description ='An skin_temp')
+dataset.add_sample_field( field_name='ground_truth.detections.glabella_temp', ftype = fo.core.fields.FloatField , description ='An glabella_temp')
+dataset.save()
 
 if __name__ == "__main__":
     session = fo.launch_app(dataset, port=8842, address="0.0.0.0")

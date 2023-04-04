@@ -60,4 +60,4 @@ def parall_func(coco_path, func, num_cores):
 if __name__ == '__main__':
     n_cpu = cpu_count()
     print(f'n_cpu = {n_cpu}')
-    parall_func(coco_path='../dataset/coco.json', func=savefig, num_cores=32)
+    parall_func(coco_path='../dataset/coco.json', func=savefig, num_cores=16)
