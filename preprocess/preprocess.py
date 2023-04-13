@@ -11,7 +11,7 @@ import random
 import argparse
 from collections import defaultdict
 import re
-
+import os.path as osp 
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -57,7 +57,7 @@ for idx, label_path in enumerate(label_path_list, start=1):
         json_file = json.load(file)
     df_img = df_img.append(
         {'id': idx,
-         'file_name': img_path,
+         'file_name': osp.basename(img_path),
          'RESOLUTION': json_file['imageHeight'] * json_file['imageWidth'],
          'height': json_file['imageHeight'],
          'width': json_file['imageWidth'] , 

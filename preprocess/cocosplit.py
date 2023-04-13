@@ -47,5 +47,5 @@ test_df['categories'] = json_data['categories']
 with open(os.path.join(args.save_path, "train.json"), "w") as json_file:
     json.dump(train_df, json_file, indent=4)
 
-with open(os.path.join(args.save_path, "test.json"), "w") as json_file:
+with open(os.path.join(args.save_path, "val.json"), "w") as json_file:
     json.dump(test_df, json_file, indent=4)
