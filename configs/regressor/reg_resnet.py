@@ -123,7 +123,7 @@ class ResNet(nn.Module):
         self,
         block: Type[Union[BasicBlock, Bottleneck]],
         layers: List[int],
-        num_classes: int = 1000,
+        num_classes: int = 1,
         zero_init_residual: bool = False,
         groups: int = 1,
         width_per_group: int = 64,
@@ -148,7 +148,7 @@ class ResNet(nn.Module):
             )
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -156,6 +156,8 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -222,24 +224,32 @@ class ResNet(nn.Module):
         x = self.relu(x)
         x = self.maxpool(x)
 
-        level_1 = self.layer1(x)
-        level_2 = self.layer2(level_1)
-        level_3 = self.layer3(level_2)
-        level_4 = self.layer4(level_3)
-        return [level_1,level_2 , level_3 , level_4]
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        return x
 
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)
     
 
-def ResNet50():
+def Reg_ResNet50():
     return ResNet(Bottleneck, [3, 4, 6, 3])
 
+def Reg_ResNet152():
+    return ResNet(Bottleneck, [3, 8, 36, 3])
 
-# if __name__=="__main__":
-#     inputs = torch.randn(1,256,128,128)
-#     backbone = ResNet50()
-#     torch.onnx.export(backbone,  inputs, 'ResNet50.onnx', 
-#                     input_names = ['inputs' ] , 
-#                     output_names = ['level1' , 'level2' , 'level_3' , 'level_4'], opset_version = 11 
-#                   )
+
+
+if __name__=="__main__":
+    inputs = torch.randn(16,3,512,512)
+    backbone = ResNet50()
+    torch.onnx.export(backbone,  inputs, 'ResNet50.onnx', 
+                    input_names = ['inputs' ] , 
+                    output_names = ['outputs'], opset_version = 11 
+                  )

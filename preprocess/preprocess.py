@@ -35,8 +35,9 @@ warnings.filterwarnings(action='ignore')
 # parser.add_argument('--save_path')
 
 # args = parser.parse_args()
-
-label_path_list = glob.glob('./dataset/label/*')
+label_name = 'multi_label'
+dataset_prefix = './dataset/'
+label_path_list = glob.glob(os.path.join(dataset_prefix,label_name,'*'))
 
 # make img dataframe
 df_img = pd.DataFrame(
@@ -48,9 +49,10 @@ df_obj = pd.DataFrame(
 
 obj_idx = 1
 cats = set()
+mis_label_list = []
 for idx, label_path in enumerate(label_path_list, start=1):
     # json to img file path
-    img_path = label_path.replace('label', 'img').replace('json', 'jpg')
+    img_path = label_path.replace(label_name, 'img').replace('json', 'jpg')
 
     # load json file
     with open(label_path, 'r') as file:
@@ -66,8 +68,11 @@ for idx, label_path in enumerate(label_path_list, start=1):
 
     # get object
     obj_list = json_file['shapes']
+    label_check = []
     for obj in obj_list:
         label = obj['label']
+        if 'cheek' in label: label = 'cheek'
+        if 'eye' in label : label = 'eyes'
         cats.add(label)
         anno = np.array(obj['points']).astype(int)
         x1, y1, x2, y2 = [*anno.min(axis=0), *anno.max(axis=0)]
@@ -81,10 +86,17 @@ for idx, label_path in enumerate(label_path_list, start=1):
              'image_id': idx}, ignore_index=True
         )
         obj_idx += 1
+        label_check.append(label)
+    if set(label_check) != {"eyes" , "cheek" , "nose"}:
+        print(osp.basename(label_path))
+        mis_label_list.append(idx)
 
 
 random.seed(555)
 
+# 오류 제거
+df_img = df_img[~df_img['id'].isin(mis_label_list)]
+df_obj = df_obj[~df_obj['image_id'].isin(mis_label_list)]
 
 df_obj['area'] = df_obj['bbox'].apply(lambda x: x[2] * x[3])
 cats_id = defaultdict()
@@ -98,8 +110,7 @@ df_obj['iscrowd'] = 0
 df_coco = {}
 df_coco['images'] = df_img.to_dict('records')
 df_coco['annotations'] = df_obj.to_dict('records')
-df_coco['categories'] = [{'id': v, 'name': k,
-                          'supercategory': 'label'} for k, v in cats_id.items()]
+df_coco['categories'] = [{'id': v, 'name': k,'supercategory': 'label'} for k, v in cats_id.items()]
 
 with open('./dataset/coco.json',  "w") as json_file:
     json.dump(df_coco, json_file, indent=4, cls=NpEncoder)

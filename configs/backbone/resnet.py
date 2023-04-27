@@ -148,7 +148,7 @@ class ResNet(nn.Module):
             )
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -237,7 +237,7 @@ def ResNet50():
 
 
 if __name__=="__main__":
-    inputs = torch.randn(1,256,128,128)
+    inputs = torch.randn(16,3,512,512)
     backbone = ResNet50()
     torch.onnx.export(backbone,  inputs, 'ResNet50.onnx', 
                     input_names = ['inputs' ] , 
