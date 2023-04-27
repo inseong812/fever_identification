@@ -1,4 +1,4 @@
-import model
+import configs
 import torch.nn as nn
 import torch
 from torch.utils.data import DataLoader
@@ -19,8 +19,8 @@ import torch.nn.functional as F
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-backbone = model.resnet.ResNet50()
-dec_head = model.unet.UNetDEC()
+backbone = configs.resnet.ResNet50()
+dec_head = configs.unet.UNetDEC()
 
 class Seg_model(nn.Module):
     def __init__(self):
@@ -52,19 +52,20 @@ val_dataloader = DataLoader(dataset=val_dataset, batch_size=1 , pin_memory= True
 
 
 model.load_state_dict(torch.load('./ckpts/test/epoch_10.pth'))
-model = model.cuda()
-criterion = nn.BCEWithLogitsLoss()
 
+
+criterion = nn.BCEWithLogitsLoss()
+device = torch.device('cpu')
 losses = 0
 threshold = 0.5
-save_name = 'test'
+save_name = 'test_dice'
 os.makedirs(f'./result/{save_name}' ,exist_ok= True)
-
+model = model.to(device)
 with torch.no_grad():
     model.eval()
-    for i , (images , masks) in enumerate(val_dataloader):
-        images = images.cuda()
-        masks = masks.cuda()
+    for i , (img_metas, images, masks) in enumerate(val_dataloader):
+        images = images.to(device)
+        masks = masks.to(device)
         preds = model(images)
         preds = preds.squeeze()
         masks = masks.squeeze()
@@ -78,11 +79,16 @@ with torch.no_grad():
         pred_masks = pred_masks.cpu()
 
         img = ((img *  torch.tensor(de_std)) + torch.tensor(de_mean)).int().numpy()
-        fig , ax = plt.subplots(1,3, figsize = (16,5))
-        ax[0].imshow(img)
-        ax[1].imshow(masks.numpy())
-        ax[2].imshow(pred_masks.float().numpy())
-        fig.savefig(f'./result/{save_name}/{i}.jpg')
+        # fig , ax = plt.subplots(1,3, figsize = (16,5))
+        # ax[0].imshow(img)
+        # ax[1].imshow(masks.numpy())
+        # ax[2].imshow(pred_masks.float().numpy())
+        # fig.savefig(f'./result/{save_name}/{i}.jpg')
+        {'image_id' : ,
+         'segmentation':,
+         'category_id' : 1}
+        with open(f'./result/{save_name}/{img_metas[0].split(".")[0]}.npy', 'wb') as f:
+            np.save(f, pred_masks.numpy())
 
         if i % 100 ==0 and i >0: break
     print('val_losses' , losses / len(val_dataloader))
