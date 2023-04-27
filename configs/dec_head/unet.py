@@ -3,7 +3,7 @@ import torch.nn as nn
 
 # 모델 정의하는부분
 class UNetDEC(nn.Module):
-    def __init__(self):
+    def __init__(self,output_channel):
         super(UNetDEC , self).__init__()
         def CBR2d(in_channels , out_channels , kernel_size = 3 , stride = 1 , padding = 1 , bias = True):
             '''
@@ -34,7 +34,7 @@ class UNetDEC(nn.Module):
         self.dec3 = make_layer_dec(2* 512 , 256)
         self.dec2 = make_layer_dec(2* 256 , 128)
         self.fc0 = nn.ConvTranspose2d(in_channels=128 , out_channels=64,kernel_size=2, stride=2, padding=0, bias=True)
-        self.fc = nn.Conv2d(in_channels=64, out_channels=1, kernel_size=1, stride=1, padding=0, bias=True)
+        self.fc = nn.Conv2d(in_channels=64, out_channels=output_channel, kernel_size=1, stride=1, padding=0, bias=True)
     def forward(self , levels):
         x = levels[-1]
         out = self.dec5(x)
