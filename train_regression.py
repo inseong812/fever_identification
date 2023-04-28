@@ -21,23 +21,24 @@ import json
 import torch.nn.functional as F
 from utils.logger import create_logger
 from functools import partial
-
+from timm.scheduler.cosine_lr import CosineLRScheduler
 
 def min_max_scaler(x, min_v, max_v):
     return (x - min_v) / (max_v - min_v)
 
-save_name = '4_category'
+save_name = '4_category_epoch1000_AdamW_lr_1e-4_consine'
 device = torch.device('cuda')
 os.makedirs(f'./ckpts/{save_name}' ,exist_ok= True)
 os.makedirs(f'./result/{save_name}' ,exist_ok= True)
 resume_start = False
 logger = create_logger(save_name)
-label_type = ['face' , 'eyes']
+label_type = None
 
 scaler =  partial(min_max_scaler , min_v = 23.580, max_v = 38.902)
 train_transformer = A.Compose([
     A.Resize(height=224, width=224),
-    A.Rotate(),
+    A.HorizontalFlip(),
+    # A.Rotate(),
     # A.Normalize(mean=0.5, std=0.5,
     #             max_pixel_value=255.0),
     ToTensorV2(),
@@ -83,16 +84,27 @@ else:
 
 model.load_state_dict(pretrained_weights , strict = False)
 
-epochs = 1000
+epochs = 500
 lr = 1e-4
 interval = 50
 criterion = nn.MSELoss()
 optimizer = optim.AdamW(model.parameters(),lr=lr)
+lr_scheduler = CosineLRScheduler(
+    optimizer,
+    t_initial=(2000 - 500),
+    lr_min=5e-6,
+    warmup_lr_init=5e-7,
+    warmup_t=1000,
+    cycle_limit=20,
+    t_in_epochs=False,
+    warmup_prefix=True,
+)
+
 
 
 
 model = model.to(device)
-
+step = 1
 for epoch in range(1, epochs + 1):
     losses = 0
     model.train()
@@ -110,7 +122,8 @@ for epoch in range(1, epochs + 1):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
+        lr_scheduler.step_update(num_updates=step)
+        step += 1
         if i % interval == 0:
             logger.info(f'[{i} / {len(train_dataloader)}]')
             logger.info(f'train loss {i} : {losses / interval}')
