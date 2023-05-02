@@ -124,6 +124,7 @@ class ResNet(nn.Module):
         block: Type[Union[BasicBlock, Bottleneck]],
         layers: List[int],
         num_classes: int = 1,
+        num_inputs : int = 4,
         zero_init_residual: bool = False,
         groups: int = 1,
         width_per_group: int = 64,
@@ -148,7 +149,7 @@ class ResNet(nn.Module):
             )
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv1 = nn.Conv2d(num_inputs, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -238,11 +239,11 @@ class ResNet(nn.Module):
         return self._forward_impl(x)
     
 
-def Reg_ResNet50():
-    return ResNet(Bottleneck, [3, 4, 6, 3])
+def Reg_ResNet50(num_inputs):
+    return ResNet(Bottleneck, [3, 4, 6, 3] , num_inputs = num_inputs)
 
-def Reg_ResNet152():
-    return ResNet(Bottleneck, [3, 8, 36, 3])
+def Reg_ResNet152(num_inputs):
+    return ResNet(Bottleneck, [3, 8, 36, 3] , num_inputs = num_inputs)
 
 
 

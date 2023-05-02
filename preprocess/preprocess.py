@@ -38,7 +38,11 @@ warnings.filterwarnings(action='ignore')
 label_name = 'multi_label'
 dataset_prefix = './dataset/'
 label_path_list = glob.glob(os.path.join(dataset_prefix,label_name,'*'))
+add_path = True 
+face_label_name = 'label'
 
+if add_path:
+    face_label_path = glob.glob(os.path.join(dataset_prefix,face_label_name,'*'))
 # make img dataframe
 df_img = pd.DataFrame(
     columns=['id', 'file_name', 'RESOLUTION', 'width', 'height'])
@@ -57,22 +61,29 @@ for idx, label_path in enumerate(label_path_list, start=1):
     # load json file
     with open(label_path, 'r') as file:
         json_file = json.load(file)
+    
+    if add_path:
+        face_label_path = label_path.replace(label_name , face_label_name)
+        with open(face_label_path, 'r') as file:
+            face_json_file = json.load(file)
+
     df_img = df_img.append(
         {'id': idx,
          'file_name': osp.basename(img_path),
          'RESOLUTION': json_file['imageHeight'] * json_file['imageWidth'],
          'height': json_file['imageHeight'],
          'width': json_file['imageWidth'] , 
-         }, ignore_index=True
-    )
+         }, ignore_index=True)
 
     # get object
     obj_list = json_file['shapes']
     label_check = []
+
+    if add_path:
+        obj_list += face_json_file['shapes']
     for obj in obj_list:
         label = obj['label']
         if 'cheek' in label: label = 'cheek'
-        if 'eye' in label : label = 'eyes'
         cats.add(label)
         anno = np.array(obj['points']).astype(int)
         x1, y1, x2, y2 = [*anno.min(axis=0), *anno.max(axis=0)]
@@ -87,9 +98,6 @@ for idx, label_path in enumerate(label_path_list, start=1):
         )
         obj_idx += 1
         label_check.append(label)
-    if set(label_check) != {"eyes" , "cheek" , "nose"}:
-        print(osp.basename(label_path))
-        mis_label_list.append(idx)
 
 
 random.seed(555)

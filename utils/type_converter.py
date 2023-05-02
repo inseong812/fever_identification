@@ -31,7 +31,7 @@ def overlay(one_hot_mask):
     cmap = [(255,0,255) , (255,0,0) , (255,255,255) ]
     ch_c = one_hot_mask.shape[-1]
     mask = np.zeros((*one_hot_mask.shape[:2],3))
-    for c in range(ch_c):
+    for c in range(3):
         mask[np.where(one_hot_mask[:,:,c] != 0)] = cmap[c]
     return mask
 

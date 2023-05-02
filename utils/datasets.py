@@ -95,7 +95,12 @@ class RegCustomDataset(data.Dataset):
         >>> dataset = CustomDataset( './dataset/coco.json', img_prefix = './dataset/img/' ,transformer=transformer)
         >>> dataset[3]
     '''
-    def __init__(self, coco_dir, celcius_prefix, metas_df_path ,transformer=None  , label_type = 'eyes'):
+    def __init__(self, coco_dir, 
+                    celcius_prefix, 
+                    metas_df_path ,
+                    transformer=None  , 
+                    label_type : list = None # None 지정시 모든 label 사용
+                    ):
         super(RegCustomDataset, self).__init__()
         self.coco_gt = COCO(coco_dir)
         self.celcius_prefix = celcius_prefix
@@ -108,10 +113,17 @@ class RegCustomDataset(data.Dataset):
         self.cat_name_to_id = {cat_info['name']: cat_info['id'] for cat_info in self.coco_gt.loadCats(self.coco_gt.getCatIds())}
         self.catId_to_name = {v: k for k, v in self.cat_name_to_id.items()}
         self.cat_nums = len(self.coco_gt.getCatIds())
+        self.label_idxs = []
         if label_type:
             self.label_type = label_type
             keys = list(self.cat_name_to_id.keys())
-            self.aval_idx = np.nonzero(np.where( np.array(keys) == label_type ))[0][0]
+
+            assert len(set(label_type) | set(keys)) == 4 , f'label_type이 다름 {label_type} vs {keys}' 
+
+            for label in label_type:
+                if label in keys:
+                    self.label_idxs.append(self.cat_name_to_id[label]-1)
+            self.label_idxs.sort()
     def __len__(self):
         return len(self.img_idx_list)
 
@@ -136,12 +148,14 @@ class RegCustomDataset(data.Dataset):
         with open(celsius_path, 'rb') as f:
             celsius = np.load(f, encoding ='ASCII') 
         one_hot_mask = tcvt.get_one_hot_mask(self.coco_gt , idx = idx)
-        if self.label_type:
-            mask = one_hot_mask[...,self.aval_idx]
+        if hasattr(self , 'label_type'):
+            mask = one_hot_mask[..., self.label_idxs]
+            if len(mask.shape) == 2:
+                mask = np.expand_dims(celsius , axis = -1)
         else:
-            mask = np.max(one_hot_mask , axis =2)
+            mask = one_hot_mask
 
-        celsius = celsius * mask
+        celsius = np.multiply(mask , np.expand_dims(celsius , axis = -1))
         x1, y1, x2, y2 = np.nonzero(celsius)[0].min(),np.nonzero(celsius)[1].min() , \
                 np.nonzero(celsius)[0].max(), np.nonzero(celsius)[1].max()
         return {'file_name' : img_name } , celsius[x1-1:x2+1,y1-1:y2+1]
